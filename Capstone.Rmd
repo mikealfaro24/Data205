@@ -1,0 +1,278 @@
+---
+title: "Capstone"
+author: "Mike Alfaro"
+date: "2024-04-06"
+output: html_document
+---
+
+```{r warning=FALSE, message=FALSE}
+# loading libraries
+library(leaflet)
+library(rgdal)
+library(tidyverse)
+```
+
+```{r}
+# Read the shapefile
+WatershedConditions <- readOGR("/Users/mikea/Desktop/Capstone/StreamCond_2016_2021/StreamCond_2016_2021.shp")
+WatershedConditions <- spTransform(WatershedConditions, CRS("+proj=longlat +datum=WGS84"))
+
+Watershed_12Dig <- readOGR("/Users/mikea/Desktop/Capstone/DEP_Subwatersheds_12DIG/DEP_Subwatersheds_12DIG.shp")
+Watershed_12Dig <- spTransform(Watershed_12Dig, CRS("+proj=longlat +datum=WGS84"))
+```
+
+```{r}
+names(WatershedConditions)[which(names(WatershedConditions) == "PopUp")] <- "Info"
+names(WatershedConditions)[which(names(WatershedConditions) == "Narrative")] <- "Watershed_Health"
+unique(WatershedConditions$Watershed_Health)
+```
+
+```{r}
+# provided by gpt
+getColor <- function(health) {
+  ifelse(health == "Excellent", "#87b3da",
+         ifelse(health == "Good", "#aad691",
+                ifelse(health == "Fair", "#f6f58c",
+                       ifelse(health == "Poor", "#ec938d", "#8b8b8b"))))
+}
+
+```
+
+```{r}
+build <- leaflet() %>% 
+  addTiles(group = "OSM (Default)") %>% 
+  addProviderTiles("Esri.WorldGrayCanvas", group = "Esri World Gray Canvas") %>%
+  addProviderTiles("Esri.WorldTopoMap", group = "Esri World Topo Map") %>%
+  addPolygons(
+    data = WatershedConditions,
+    fillColor = ~getColor(Watershed_Health), 
+    color = "#BDBDC3", # Border color for Watershed Conditions
+    fillOpacity = 0.8,
+    weight = 1,
+    popup = ~paste(
+      "<strong>Tributary:</strong>", Tributary, "<br/>",
+      "<strong>Watershed Health:</strong>", Watershed_Health, "<br/>",
+      "<strong>Info:</strong>", Info
+    ),
+    group = "Watershed Conditions" 
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build
+```
+
+
+```{r}
+build2 <- build %>% 
+  addPolygons(
+    data = Watershed_12Dig,
+    popup = ~as.character(MD12DIG_N),
+    fillColor = NA,
+    color = "blue", 
+    weight = 1,
+    fillOpacity = 0,
+    group = "SubWatersheds (12-DIG)" 
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build2
+```
+
+```{r warning=FALSE, message=FALSE}
+# adding snow routes 
+
+SilverSpring <- readOGR("~/Desktop/capstone/SilverSpring_BrineRoutes/SilverSpring_BrineRoutes.shp")
+SilverSpring <- spTransform(SilverSpring, CRS("+proj=longlat +datum=WGS84"))
+
+Bethesda <- readOGR("/Users/mikea/Desktop/Capstone/Bethesda_BrineRoutes/Bethesda_BrineRoutes.shp")
+Bethesda <- spTransform(Bethesda, CRS("+proj=longlat +datum=WGS84"))
+
+Colesville <- readOGR("/Users/mikea/Desktop/Capstone/Colesville_BrineRoutes/Colesville_BrineRoutes.shp")
+Colesville <- spTransform(Colesville, CRS("+proj=longlat +datum=WGS84"))
+
+Gaithersburg_East <- readOGR("/Users/mikea/Desktop/Capstone/GE_BrineRoutes.shp/GE_BrineRoutes.shp")
+Gaithersburg_East <- spTransform(Gaithersburg_East, CRS("+proj=longlat +datum=WGS84"))
+
+Gaithersburg_West <- readOGR("/Users/mikea/Desktop/Capstone/GW_BrineRoutes/GW_BrineRoutes.shp")
+Gaithersburg_West <- spTransform(Gaithersburg_West, CRS("+proj=longlat +datum=WGS84"))
+
+Poolesville <- readOGR("/Users/mikea/Desktop/Capstone/Poolesville_BrineRoutes/Poolesville_BrineRoutes.shp")
+Poolesville <- spTransform(Poolesville,  CRS("+proj=longlat +datum=WGS84"))
+
+Damascus <- readOGR("/Users/mikea/Desktop/Capstone/Damascus_BrineRoutes/Damascus_BrineRoutes.shp")
+Damascus <- spTransform(Damascus, CRS("+proj=longlat +datum=WGS84"))
+```
+
+```{r}
+build3 <- build2 %>% 
+  addPolylines(
+    data = SilverSpring,
+    color = "lightgray", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "5, 10",
+    group = "Silver Spring Routes"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes" ),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build3
+```
+
+```{r}
+# load beth. 
+build4 <- build3 %>% 
+  addPolylines(
+    data = Bethesda,
+    color = "#171717", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "1, 10",
+    group = "Bethesda"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes","Bethesda"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build4
+```
+
+```{r}
+dash_pattern <- "0, 8, 8, 0"
+
+build5 <- build4 %>% 
+  addPolylines(
+    data = Colesville,
+    color = "#7876B1", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "dash_pattern",
+    group = "Colesville"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes","Bethesda","Colesville"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build5
+```
+
+
+
+
+```{r}
+build6 <- build5 %>% 
+  addPolylines(
+    data = Gaithersburg_East,
+    color = "#213A5C", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "1,10",
+    group = "Gaithersburg East"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes","Bethesda","Colesville", "Gaithersburg East"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build6
+```
+
+```{r}
+build7 <- build6 %>% 
+  addPolylines(
+    data = Gaithersburg_West,
+    color = "#FFDC91", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "dash_pattern",
+    group = "Gaithersburg West"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes","Bethesda","Colesville", "Gaithersburg East", "Gaithersburg West"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build7
+```
+
+```{r}
+build8 <- build7 %>% 
+  addPolylines(
+    data = Poolesville,
+    color = "#4DBBD5", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "dash_pattern",
+    group = "Poolesville"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes","Bethesda","Colesville", "Gaithersburg East", "Gaithersburg West", "Poolesville"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build8
+```
+
+```{r}
+build9 <- build8 %>% 
+  addPolylines(
+    data = Damascus,
+    color = "#F39B7F", 
+    weight = 2.5, 
+    opacity = 1,
+    dashArray = "dash_pattern",
+    group = "Damascus"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OSM (Default)", "Esri World Gray Canvas", "Esri World Topo Map"),
+    overlayGroups = c("Watershed Conditions", "SubWatersheds (12-DIG)", "Silver Spring Routes","Bethesda","Colesville", "Gaithersburg East", "Gaithersburg West", "Poolesville","Damascus"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+build9
+```
+
+
+```{r}
+buildlocation<- build9 %>%
+  addEasyButton(
+    easyButton(
+      icon = "fa-location-arrow",
+      title = "Locate Me",
+      onClick = JS("function(btn, map) {
+                    map.locate({setView: true, maxZoom: 16});
+                  }")
+    )
+  )
+buildlocation
+```
+
+
+
+```{r}
+library(htmlwidgets)
+saveWidget(widget = buildlocation, file= "Watershed_Map.html")
+```
+
+```{r}
+unique(Colesville$SNOW_PRIOR)
+unique(Poolesville$SNOW_PRIOR)
+unique(Bethesda$SNOW_PRIOR)
+```
+
+
+```{r}
+head(WatershedConditions)
+```
+
+
+
